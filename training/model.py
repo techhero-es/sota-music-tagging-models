@@ -9,6 +9,57 @@ import torchaudio
 from modules import Conv_1d, ResSE_1d, Conv_2d, Res_2d, Conv_V, Conv_H, HarmonicSTFT, Res_2d_mp
 from attention_modules import BertConfig, BertEncoder, BertEmbeddings, BertPooler, PositionalEncoding
 
+class RNN(nn.Module):
+    '''
+    Music Genre Classification: Transformers vs Recurrent Neural Networks
+    https://towardsdatascience.com/music-genre-classification-transformers-vs-recurrent-neural-networks-631751a71c58
+    '''
+    def __init__(self,
+                sample_rate=16000,
+                n_fft=512,
+                f_min=0.0,
+                f_max=8000.0,
+                n_mels=96,
+                n_class=50):
+        super(RNN, self).__init__()
+
+        # Spectrogram
+        self.spec = torchaudio.transforms.MelSpectrogram(sample_rate=sample_rate,
+                                                         n_fft=n_fft,
+                                                         f_min=f_min,
+                                                         f_max=f_max,
+                                                         n_mels=n_mels)
+        self.to_db = torchaudio.transforms.AmplitudeToDB()
+        self.spec_bn = nn.BatchNorm2d(1)
+
+        # RNN
+        self.rnn = nn.GRU(n_mels, n_mels, num_layers=2, bidirectional=True, batch_first=True)
+
+        # Dense
+        self.dropout = nn.Dropout(0.2)
+        self.pool = nn.AdaptiveAvgPool2d((1, 2 * n_mels))
+        self.out =  nn.Linear(2 * n_mels, n_class)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        # Spectrogram
+        x = self.spec(x)
+        x = self.to_db(x)
+        x = x.unsqueeze(1)
+        x = self.spec_bn(x)
+
+        # RNN
+        x = x.squeeze(1)
+        x = x.permute(0, 2, 1)
+        x, _ = self.rnn(x)
+
+        # Dense
+        x = self.dropout(x)
+        x = self.pool(x)
+        x = self.out(x)
+        x = x.squeeze(1)
+        x = self.softmax(x)
+        return x
 
 class FCN(nn.Module):
     '''
@@ -619,4 +670,3 @@ class HarmonicCNN(nn.Module):
         x = nn.Sigmoid()(x)
 
         return x
-

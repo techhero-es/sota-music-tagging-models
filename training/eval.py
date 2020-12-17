@@ -178,7 +178,9 @@ class Predict(object):
 
             # forward
             x = self.to_var(x)
-            y = torch.tensor([ground_truth.astype('float32') for i in range(self.batch_size)]).cuda()
+            y = torch.tensor([ground_truth.astype('float32') for i in range(self.batch_size)])
+            if torch.cuda.is_available():
+                y = y.cuda()
             out = self.model(x)
             loss = reconst_loss(out, y)
             losses.append(float(loss.data))
@@ -211,9 +213,3 @@ if __name__ == '__main__':
 
     p = Predict(config)
     p.test()
-
-
-
-
-
-

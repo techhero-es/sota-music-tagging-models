@@ -104,6 +104,8 @@ class Solver(object):
             return Model.FCN()
         elif self.model_type == 'musicnn':
             return Model.Musicnn(dataset=self.dataset)
+        elif self.model_type == 'rnn':
+            return Model.RNN()
         elif self.model_type == 'crnn':
             return Model.CRNN()
         elif self.model_type == 'sample':
@@ -296,7 +298,9 @@ class Solver(object):
 
             # forward
             x = self.to_var(x)
-            y = torch.tensor([ground_truth.astype('float32') for i in range(self.batch_size)]).cuda()
+            y = torch.tensor([ground_truth.astype('float32') for i in range(self.batch_size)])
+            if torch.cuda.is_available():
+                y = y.cuda()
             out = self.model(x)
             loss = reconst_loss(out, y)
             losses.append(float(loss.data))
@@ -318,4 +322,3 @@ class Solver(object):
         self.writer.add_scalar('AUC/ROC', roc_auc, epoch)
         self.writer.add_scalar('AUC/PR', pr_auc, epoch)
         return roc_auc, pr_auc, loss
-
